@@ -103,20 +103,29 @@ def process_prompt(prompt: str) -> str:
                         values = entry.get('values', [])
                         if values and len(values) > 0:
                             for ts, msg in values:
-                                ts_seconds = int(int(ts) / 1_000_000_000)  # Convert nanoseconds to seconds
-                                raw_logs.append(f"Timestamp: {ts_seconds}, Message: {msg}")
+                                raw_logs.append(f"Timestamp: {ts}, Message: {msg}")
                     
                     raw_logs_str = "\n".join(raw_logs)  # Send all logs, no truncation
                     print(f"Raw Logs Extracted: {raw_logs_str}")
                     
                     # Step 3: Analyze and refine with all logs
+                    # analysis_prompt = (
+                    #     f"Here are the raw logs fetched based on the user's request:\n\n{raw_logs_str}\n\n"
+                    #     f"Total log entries retrieved: {len(raw_logs)}\n\n"
+                    #     f"Now, based on the original prompt '{prompt}', analyze these logs and provide a clear, "
+                    #     "human-readable response. Convert timestamps (in Unix seconds) to readable dates (UTC), "
+                    #     "extract key details, and address the user's specific intent (e.g., listing logs, finding errors). "
+                    #     "Summarize patterns if applicable."
+                    # )
+
                     analysis_prompt = (
                         f"Here are the raw logs fetched based on the user's request:\n\n{raw_logs_str}\n\n"
                         f"Total log entries retrieved: {len(raw_logs)}\n\n"
-                        f"Now, based on the original prompt '{prompt}', analyze these logs and provide a clear, "
-                        "human-readable response. Convert timestamps (in Unix seconds) to readable dates (UTC), "
-                        "extract key details, and address the user's specific intent (e.g., listing logs, finding errors). "
-                        "Summarize patterns if applicable."
+                        f"The user's prompt is: '{prompt}'. Analyze these logs and provide a clear, human-readable response "
+                        f"that directly addresses the user's intent as stated in the prompt. "
+                        f"Convert timestamps from nanoseconds to readable dates (UTC) by dividing by 1e9 to get seconds if needed. "
+                        f"Extract and focus on the details relevant to what the user asked for, whether it's searching for specific values, "
+                        f"identifying errors, summarizing patterns, or anything else specified in the prompt."
                     )
 
                     try:
@@ -142,9 +151,16 @@ def process_prompt(prompt: str) -> str:
 
 # Example usage
 if __name__ == "__main__":
+    # prompts = [
+    #     "Fetch the logs of /staging-cobi-v2 start=1743750222 and end = 1743753822",
+    #     "Fetch the logs of /staging-cobi-v2 and analyse the logs or errors or whatever",
+    # ]
     prompts = [
-        "Fetch the logs of /staging-cobi-v2 start=1743750222 and end = 1743753822",
-        "Fetch the logs of /staging-cobi-v2 and analyse the logs or errors or whatever",
+        # "Fetch the logs of /staging-cobi-v2 start=1743750222 and end = 1743753822 check whether txid:f8c67a65e30bcbc68e29939afe110a2d5444a46504e5c3a84b087a64c8a24b71 exists or not",
+        # "Fetch the logs of /staging-cobi-v2 and analyse the logs or errors or whatever , start_time: 1744002429, end_time: 1744006029, limit: 100. check whether createID:86ad8e1e853d30337ac50accec7c8ece8892865cf46690c9588a02d4b9d5d1bf exists or not",
+        # "Fetch the logs of /staging-cobi-v2 start_time: 1744002429, end_time: 1744006029, limit: 100. check whether createID:86ad8e1e853d30337ac50accec7c8ece8892865cf46690c9588a02d4b9d5d1bf exists or not",
+        "Fetch the logs of /staging-cobi-v2 start_time: 1744002429, end_time: 1744006029, limit: 100. check whether txid:f8c67a65e30bcbc68e29939afe110a2d5444a46504e5c3a84b087a64c8a24b71 exists or not",
+
     ]
 
     for prompt in prompts:
