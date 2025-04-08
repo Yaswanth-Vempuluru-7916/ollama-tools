@@ -5,7 +5,7 @@ from typing import Dict, Any, Callable
 from urllib.parse import quote
 from ollama import chat
 from dotenv import load_dotenv
-from datetime import datetime
+from flask import Flask, request, render_template
 
 # Load .env variables
 load_dotenv()
@@ -20,6 +20,9 @@ CONTAINERS = [
     "/staging-info-server", "/staging-quote", "/quote-staging", "/solana-relayer-staging",
     "/solana-watcher-staging", "/starkner-watcher-staging",
 ]
+
+# Initialize Flask app
+app = Flask(__name__)
 
 # Function to fetch logs from the API
 def fetch_logs(container: str, start_time: int = None, end_time: int = None, limit: int = 100) -> Dict[str, Any]:
@@ -62,13 +65,12 @@ fetch_logs_tool = {
     },
 }
 
-# Main execution
+# Main execution logic
 available_functions: Dict[str, Callable] = {
     'fetch_logs': fetch_logs,
 }
 
-def process_prompt(prompt: str) -> str:
-    # Step 1: Initial chat to interpret the prompt and call fetch_logs
+def process_prompt(prompt: str) -> tuple[str, str, str]:
     initial_response = chat(
         'llama3.1',
         messages=[{'role': 'user', 'content': prompt}],
@@ -79,25 +81,19 @@ def process_prompt(prompt: str) -> str:
         for tool in initial_response.message.tool_calls:
             if function_to_call := available_functions.get(tool.function.name):
                 try:
-                    print(f"Calling function: {tool.function.name}")
-                    print(f"Arguments from Ollama: {tool.function.arguments}")
-                    
-                    # Resolve arguments with defaults and compute actual values
                     args = {'container': tool.function.arguments['container']}
                     current_time = int(time.time())
                     resolved_start = tool.function.arguments.get('start_time', None) if 'start_time' in tool.function.arguments else current_time - 3600
                     resolved_end = tool.function.arguments.get('end_time', None) if 'end_time' in tool.function.arguments else current_time
                     resolved_limit = tool.function.arguments.get('limit', 100)
-                    print(f"Actual Arguments Used: {{'container': '{args['container']}', 'start_time': {resolved_start}, 'end_time': {resolved_end}, 'limit': {resolved_limit}}}")
+                    arguments_str = f"Actual Arguments Used: {{'container': '{args['container']}', 'start_time': {resolved_start}, 'end_time': {resolved_end}, 'limit': {resolved_limit}}}"
                     
                     logs = function_to_call(args['container'], resolved_start, resolved_end, resolved_limit)
                     
-                    # Step 2: Extract logs
                     log_entries = logs.get('data', {}).get('result', [])
                     if not log_entries:
-                        return "No logs found for the specified container and time range."
+                        return arguments_str, "No logs found for the specified container and time range.", ""
 
-                    # Extract all logs and convert nanosecond timestamps to seconds
                     raw_logs = []
                     for entry in log_entries:
                         values = entry.get('values', [])
@@ -106,10 +102,8 @@ def process_prompt(prompt: str) -> str:
                                 ts_seconds = int(int(ts) / 1_000_000_000)  # Convert nanoseconds to seconds
                                 raw_logs.append(f"Timestamp: {ts_seconds}, Message: {msg}")
                     
-                    raw_logs_str = "\n".join(raw_logs)  # Send all logs, no truncation
-                    print(f"Raw Logs Extracted: {raw_logs_str}")
+                    raw_logs_str = "\n".join(raw_logs)  # Send all logs
                     
-                    # Step 3: Analyze and refine with all logs
                     analysis_prompt = (
                         f"Here are the raw logs fetched based on the user's request:\n\n{raw_logs_str}\n\n"
                         f"Total log entries retrieved: {len(raw_logs)}\n\n"
@@ -125,28 +119,25 @@ def process_prompt(prompt: str) -> str:
                             messages=[{'role': 'user', 'content': analysis_prompt}],
                         )
                         refined_result = analysis_response.message.content
-                        print(f"Refined Response: {refined_result}")
-                        return refined_result
+                        return arguments_str, raw_logs_str, refined_result
                     except Exception as e:
-                        return f"Error analyzing logs with Ollama: {str(e)}\nRaw Logs:\n{raw_logs_str}"
-
+                        return arguments_str, raw_logs_str, f"Error analyzing logs with Ollama: {str(e)}"
                 except Exception as e:
-                    error_msg = f"Error fetching logs: {str(e)}"
-                    print(error_msg)
-                    return error_msg
+                    return f"Arguments: {tool.function.arguments}", "", f"Error fetching logs: {str(e)}"
             else:
-                print(f"Function {tool.function.name} not found")
-                return "Tool not found."
+                return "", "", "Tool not found."
     else:
-        return initial_response.message.content
+        return "", "", initial_response.message.content
 
-# Example usage
+# Flask routes
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        prompt = request.form.get("prompt")
+        if prompt:
+            arguments, raw_logs, refined_response = process_prompt(prompt)
+            return render_template("index.html", arguments=arguments, raw_logs=raw_logs, refined_response=refined_response)
+    return render_template("index.html")
+
 if __name__ == "__main__":
-    prompts = [
-        "Fetch the logs of /staging-cobi-v2 and analyse the logs or errors or whatever",
-    ]
-
-    for prompt in prompts:
-        print(f"\nProcessing prompt: {prompt}")
-        result = process_prompt(prompt)
-        print(f"Final Output:\n{result}")
+    app.run(debug=True, host="0.0.0.0", port=5000)
