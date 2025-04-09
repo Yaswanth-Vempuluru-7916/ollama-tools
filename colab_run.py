@@ -82,8 +82,8 @@ def process_prompt(prompt: str) -> tuple[str, str, str, float, float, float]:
                     args = tool['function']['arguments']
                     # Filter args based on query content
                     query_lower = prompt.lower()
-                    has_start = any(term in query_lower for term in ["start", "from", "beginning"])
-                    has_end = any(term in query_lower for term in ["end", "to", "until"])
+                    has_start = any(term in query_lower for term in ["start", "from", "beginning","begin"])
+                    has_end = any(term in query_lower for term in ["end", "to", "until","till"])
                     has_limit = "limit" in query_lower
                     
                     filtered_args = {"container": args.get('container', '/staging-cobi-v2')}

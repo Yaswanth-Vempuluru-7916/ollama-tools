@@ -161,7 +161,13 @@ if __name__ == "__main__":
         # "Fetch the logs of /staging-cobi-v2 start_time: 1744002429, end_time: 1744006029, limit: 100. check whether createID:86ad8e1e853d30337ac50accec7c8ece8892865cf46690c9588a02d4b9d5d1bf exists or not",
         # "Fetch the logs of /staging-cobi-v2 start_time: 1744002429, end_time: 1744006029, limit: 100. check whether txid:f8c67a65e30bcbc68e29939afe110a2d5444a46504e5c3a84b087a64c8a24b71 exists or not",
         # "Fetch the logs of /starkner-watcher-staging start_time: 1744002429, end_time: 1744006029, limit: 100",
-        "Fetch the logs of /staging-evm-watcher and analyse"
+        "Fetch the logs of /staging-evm-watcher and analyse",
+        "which this the latest order that failed in stage bit ponder",
+        "which this the latest order that failed in stage bit ponder for start = 1743920134 and end  = 1744099054",
+        "How many orders were received during a particular batch in staging cobi v2?",
+        "stag evm relay , When did the server start and on what address with start 1744009719",
+        "give the qoutestage logs and analyse them thoroughly ",
+        "solana watch stage data give"
 
     ]
 
